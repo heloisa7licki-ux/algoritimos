@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Quiz Interativo na Nuvem (Firebase)</title>
+  <title>Quiz Interativo</title>
   <style>
     :root {
       --bg: #0f172a;
@@ -62,7 +62,6 @@
     .user-form {
       display: flex;
       gap: 10px;
-      margin-bottom: 20px;
       flex-wrap: wrap;
     }
 
@@ -94,13 +93,8 @@
       transition: background 0.18s ease;
     }
 
-    .btn:hover:not(:disabled) {
+    .btn:hover {
       background: var(--accent-hover);
-    }
-
-    .btn:disabled {
-      opacity: 0.6;
-      cursor: default;
     }
 
     .btn-secondary {
@@ -110,7 +104,7 @@
       font-weight: 600;
     }
 
-    .btn-secondary:hover:not(:disabled) {
+    .btn-secondary:hover {
       background: var(--card-hover);
     }
 
@@ -223,43 +217,14 @@
 
     .result-box h2 {
       font-size: 1.55rem;
-      margin-bottom: 10px;
-    }
-
-    .result-box p {
-      color: var(--muted);
       margin-bottom: 12px;
-      font-size: 1.02rem;
     }
 
-    .status-msg {
-      font-size: 0.88rem;
-      color: var(--accent);
-      margin-bottom: 12px;
-      min-height: 1.2em;
-    }
-
-    .history-box {
-      text-align: left;
-      margin: 16px 0 22px;
-      padding: 14px;
-      border-radius: 10px;
-      background: rgba(15, 23, 42, 0.5);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .history-box h3 {
-      font-size: 0.95rem;
-      margin-bottom: 10px;
-    }
-
-    .history-list {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      font-size: 0.9rem;
-      color: var(--muted);
+    .score-highlight {
+      font-size: 1.2rem;
+      color: var(--text);
+      font-weight: 700;
+      margin-bottom: 22px;
     }
 
     .result-actions {
@@ -272,11 +237,11 @@
 </head>
 <body>
   <main class="quiz-container">
-    <!-- Tela 1: Nome de usuário -->
+    <!-- Tela 1: Nome do usuário -->
     <section id="login-screen">
       <h1>Entrar no Quiz</h1>
       <p class="subtitle">
-        Digite seu nome de usuário para jogar e salvar suas pontuações no Firestore.
+        Digite seu nome para começar a rodada.
       </p>
 
       <form class="user-form" id="user-form">
@@ -285,10 +250,10 @@
           id="username-input"
           type="text"
           maxlength="30"
-          placeholder="Ex.: Ana"
+          placeholder="Seu nome"
           required
         />
-        <button class="btn" id="start-btn" type="submit">Começar</button>
+        <button class="btn" type="submit">Começar</button>
       </form>
     </section>
 
@@ -311,17 +276,10 @@
       </div>
     </section>
 
-    <!-- Tela 3: Resultado e histórico na nuvem -->
+    <!-- Tela 3: Apenas a pontuação da rodada -->
     <section id="result-screen" class="result-box hidden">
-      <h2>Resultado</h2>
-      <p id="final-score"></p>
-      <p id="best-score-text"></p>
-      <div class="status-msg" id="cloud-status"></div>
-
-      <div class="history-box">
-        <h3>Histórico na nuvem do usuário</h3>
-        <ul class="history-list" id="history-list"></ul>
-      </div>
+      <h2>Fim da rodada!</h2>
+      <p class="score-highlight" id="round-score"></p>
 
       <div class="result-actions">
         <button class="btn" id="restart-btn" type="button">Jogar novamente</button>
@@ -330,31 +288,7 @@
     </section>
   </main>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import {
-      getFirestore,
-      collection,
-      addDoc,
-      query,
-      where,
-      getDocs
-    } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
-
-    // Substitua pelos dados do seu projeto em Console do Firebase > Configurações do projeto
-    const firebaseConfig = {
-      apiKey: "SUA_API_KEY",
-      authDomain: "SEU_PROJETO.firebaseapp.com",
-      projectId: "SEU_PROJETO_ID",
-      storageBucket: "SEU_PROJETO.firebasestorage.app",
-      messagingSenderId: "SEU_SENDER_ID",
-      appId: "SEU_APP_ID"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const COLLECTION_NAME = "pontuacoes";
-
+  <script>
     const questions = [
       {
         question: "Qual estrutura de dados segue a regra LIFO (último a entrar, primeiro a sair)?",
@@ -400,10 +334,7 @@
     const nextBtn = document.getElementById("next-btn");
     const switchUserBtn = document.getElementById("switch-user-btn");
 
-    const finalScoreEl = document.getElementById("final-score");
-    const bestScoreTextEl = document.getElementById("best-score-text");
-    const cloudStatusEl = document.getElementById("cloud-status");
-    const historyListEl = document.getElementById("history-list");
+    const roundScoreEl = document.getElementById("round-score");
     const restartBtn = document.getElementById("restart-btn");
     const resultSwitchUserBtn = document.getElementById("result-switch-user-btn");
 
@@ -434,7 +365,7 @@
       feedbackEl.textContent = "";
       nextBtn.classList.add("hidden");
       nextBtn.textContent =
-        currentIndex === questions.length - 1 ? "Ver resultado" : "Próxima pergunta";
+        currentIndex === questions.length - 1 ? "Ver pontuação" : "Próxima pergunta";
 
       current.options.forEach((optionText, idx) => {
         const btn = document.createElement("button");
@@ -477,82 +408,14 @@
       if (currentIndex < questions.length) {
         renderQuestion();
       } else {
-        finishQuiz();
+        showRoundResult();
       }
     });
 
-    async function fetchUserAttempts(usuario) {
-      const q = query(
-        collection(db, COLLECTION_NAME),
-        where("usuario", "==", usuario)
-      );
-      const snapshot = await getDocs(q);
-      const list = snapshot.docs.map((doc) => doc.data());
-
-      // Ordena da tentativa mais recente para a mais antiga sem exigir índice composto no Firestore
-      list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-      return list;
-    }
-
-    function renderHistoryUI(attempts) {
-      const best = attempts.reduce((max, item) => Math.max(max, item.score || 0), 0);
-      bestScoreTextEl.textContent = `Maior pontuação salva na nuvem: ${best} de ${questions.length}.`;
-
-      historyListEl.innerHTML = "";
-      if (attempts.length === 0) {
-        const li = document.createElement("li");
-        li.textContent = "Nenhuma tentativa encontrada ainda.";
-        historyListEl.appendChild(li);
-        return;
-      }
-
-      attempts.forEach((item, index) => {
-        const li = document.createElement("li");
-        const dataFormatada = item.date || "";
-        li.textContent = `Tentativa ${attempts.length - index}: ${item.score}/${item.total}${dataFormatada ? ` (${dataFormatada})` : ""}`;
-        historyListEl.appendChild(li);
-      });
-    }
-
-    async function finishQuiz() {
+    function showRoundResult() {
       quizScreen.classList.add("hidden");
       resultScreen.classList.remove("hidden");
-      restartBtn.disabled = true;
-      resultSwitchUserBtn.disabled = true;
-
-      finalScoreEl.textContent = `${currentUser}, você acertou ${score} de ${questions.length} perguntas nesta rodada.`;
-      bestScoreTextEl.textContent = "";
-      historyListEl.innerHTML = "";
-      cloudStatusEl.textContent = "Salvando pontuação no Firestore...";
-
-      const now = new Date();
-      const formattedDate = now.toLocaleString("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit"
-      });
-
-      try {
-        await addDoc(collection(db, COLLECTION_NAME), {
-          usuario: currentUser,
-          score,
-          total: questions.length,
-          date: formattedDate,
-          timestamp: now.getTime()
-        });
-
-        const attempts = await fetchUserAttempts(currentUser);
-        renderHistoryUI(attempts);
-        cloudStatusEl.textContent = "Pontuação salva na nuvem com sucesso!";
-      } catch (err) {
-        console.error(err);
-        cloudStatusEl.textContent =
-          "Não foi possível salvar no Firebase. Verifique sua firebaseConfig, regras do Firestore e conexão.";
-      } finally {
-        restartBtn.disabled = false;
-        resultSwitchUserBtn.disabled = false;
-      }
+      roundScoreEl.textContent = `${currentUser}, sua pontuação nesta rodada foi ${score} de ${questions.length}.`;
     }
 
     function goToLogin() {
