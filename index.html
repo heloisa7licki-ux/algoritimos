@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quiz Interativo</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --card-hover: #273549;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --ok-bg: rgba(34, 197, 94, 0.16);
+      --ok-border: #22c55e;
+      --err-bg: rgba(239, 68, 68, 0.16);
+      --err-border: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .quiz-container {
+      width: 100%;
+      max-width: 560px;
+      background: var(--card);
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 18px;
+    }
+
+    .question {
+      font-size: 1.25rem;
+      font-weight: 700;
+      line-height: 1.4;
+      margin-bottom: 20px;
+    }
+
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .option-btn {
+      width: 100%;
+      text-align: left;
+      padding: 14px 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(15, 23, 42, 0.55);
+      color: var(--text);
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.18s ease, border-color 0.18s ease, transform 0.1s ease;
+    }
+
+    .option-btn:hover:not(:disabled) {
+      background: var(--card-hover);
+      border-color: var(--accent);
+    }
+
+    .option-btn:disabled {
+      cursor: default;
+    }
+
+    .option-btn.correct {
+      background: var(--ok-bg);
+      border-color: var(--ok-border);
+    }
+
+    .option-btn.wrong {
+      background: var(--err-bg);
+      border-color: var(--err-border);
+    }
+
+    .feedback {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      font-size: 0.96rem;
+      line-height: 1.45;
+      display: none;
+    }
+
+    .feedback.show {
+      display: block;
+    }
+
+    .feedback.ok {
+      background: var(--ok-bg);
+      border: 1px solid var(--ok-border);
+      color: #dcfce7;
+    }
+
+    .feedback.err {
+      background: var(--err-bg);
+      border: 1px solid var(--err-border);
+      color: #fee2e2;
+    }
+
+    .footer-actions {
+      margin-top: 20px;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .next-btn {
+      background: var(--accent);
+      color: #082f49;
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-size: 0.98rem;
+      cursor: pointer;
+      display: none;
+      transition: background 0.18s ease;
+    }
+
+    .next-btn.show {
+      display: inline-block;
+    }
+
+    .next-btn:hover {
+      background: var(--accent-hover);
+    }
+
+    .result-box {
+      text-align: center;
+      display: none;
+    }
+
+    .result-box.show {
+      display: block;
+    }
+
+    .result-box h2 {
+      font-size: 1.6rem;
+      margin-bottom: 10px;
+    }
+
+    .result-box p {
+      color: var(--muted);
+      margin-bottom: 22px;
+      font-size: 1.05rem;
+    }
+  </style>
+</head>
+<body>
+  <main class="quiz-container">
+    <div id="quiz-screen">
+      <div class="top-bar">
+        <span id="progress">Questão 1 de 2</span>
+        <span id="score">Acertos: 0</span>
+      </div>
+
+      <h1 class="question" id="question-text">Carregando...</h1>
+      <div class="options" id="options-list"></div>
+
+      <div class="feedback" id="feedback-box"></div>
+
+      <div class="footer-actions">
+        <button class="next-btn" id="next-btn" type="button">Próxima pergunta</button>
+      </div>
+    </div>
+
+    <div class="result-box" id="result-screen">
+      <h2>Quiz finalizado!</h2>
+      <p id="final-score"></p>
+      <button class="next-btn show" id="restart-btn" type="button">Jogar novamente</button>
+    </div>
+  </main>
+
+  <script>
+    // Edite ou adicione perguntas aqui dentro de "questions"
+    const questions = [
+      {
+        question: "Qual estrutura de dados segue a regra LIFO (último a entrar, primeiro a sair)?",
+        options: [
+          "Fila (Queue)",
+          "Pilha (Stack)",
+          "Árvore binária",
+          "Tabela hash"
+        ],
+        correctIndex: 1,
+        explanation: "A pilha (Stack) funciona como uma pilha de pratos: o último item colocado é o primeiro a sair."
+      },
+      {
+        question: "No protocolo HTTP, qual código de status indica que a requisição foi bem-sucedida?",
+        options: [
+          "200 OK",
+          "301 Moved Permanently",
+          "404 Not Found",
+          "500 Internal Server Error"
+        ],
+        correctIndex: 0,
+        explanation: "O status 200 OK indica que o servidor processou a solicitação com sucesso."
+      }
+    ];
+
+    let currentIndex = 0;
+    let score = 0;
+
+    const quizScreen = document.getElementById("quiz-screen");
+    const resultScreen = document.getElementById("result-screen");
+    const progressEl = document.getElementById("progress");
+    const scoreEl = document.getElementById("score");
+    const questionEl = document.getElementById("question-text");
+    const optionsEl = document.getElementById("options-list");
+    const feedbackEl = document.getElementById("feedback-box");
+    const nextBtn = document.getElementById("next-btn");
+    const finalScoreEl = document.getElementById("final-score");
+    const restartBtn = document.getElementById("restart-btn");
+
+    function renderQuestion() {
+      const current = questions[currentIndex];
+      progressEl.textContent = `Questão ${currentIndex + 1} de ${questions.length}`;
+      scoreEl.textContent = `Acertos: ${score}`;
+      questionEl.textContent = current.question;
+      optionsEl.innerHTML = "";
+
+      feedbackEl.className = "feedback";
+      feedbackEl.textContent = "";
+      nextBtn.className = "next-btn";
+      nextBtn.textContent =
+        currentIndex === questions.length - 1 ? "Ver resultado" : "Próxima pergunta";
+
+      current.options.forEach((optionText, idx) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "option-btn";
+        btn.textContent = optionText;
+        btn.addEventListener("click", () => selectOption(idx, btn));
+        optionsEl.appendChild(btn);
+      });
+    }
+
+    function selectOption(selectedIdx, clickedBtn) {
+      const current = questions[currentIndex];
+      const allButtons = optionsEl.querySelectorAll(".option-btn");
+
+      allButtons.forEach((btn) => {
+        btn.disabled = true;
+      });
+
+      const isCorrect = selectedIdx === current.correctIndex;
+
+      if (isCorrect) {
+        score++;
+        scoreEl.textContent = `Acertos: ${score}`;
+        clickedBtn.classList.add("correct");
+        feedbackEl.className = "feedback show ok";
+        feedbackEl.textContent = `Você acertou! ${current.explanation}`;
+      } else {
+        clickedBtn.classList.add("wrong");
+        allButtons[current.correctIndex].classList.add("correct");
+        feedbackEl.className = "feedback show err";
+        feedbackEl.textContent = `Você errou! A resposta correta era "${current.options[current.correctIndex]}". ${current.explanation}`;
+      }
+
+      nextBtn.classList.add("show");
+    }
+
+    nextBtn.addEventListener("click", () => {
+      currentIndex++;
+      if (currentIndex < questions.length) {
+        renderQuestion();
+      } else {
+        showResult();
+      }
+    });
+
+    function showResult() {
+      quizScreen.style.display = "none";
+      resultScreen.classList.add("show");
+      finalScoreEl.textContent = `Você acertou ${score} de ${questions.length} perguntas.`;
+    }
+
+    restartBtn.addEventListener("click", () => {
+      currentIndex = 0;
+      score = 0;
+      resultScreen.classList.remove("show");
+      quizScreen.style.display = "block";
+      renderQuestion();
+    });
+
+    renderQuestion();
+  </script>
+</body>
+</html>
